@@ -13,20 +13,22 @@ use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
-use App\Controller\GetWeather;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ApiResource(
     normalizationContext: ['groups' => ['read:product']],
     denormalizationContext: ['groups' => ['write:product']],
-    operations: [
-        new Get(),
-        new Put(),
-        new Delete(),
-        //new Get(name: 'weather', uriTemplate: '/places/{id}/weather', controller: GetWeather::class),
-        new GetCollection(),
-        new Post(),
-    ]
+)]
+#[Delete]
+#[Get(
+    validationContext: ['groups' => ['validation:read:product']]
+)]
+#[Put]
+#[GetCollection(
+    validationContext: ['groups' => ['validation:read:product']]
+)]
+#[Post(
+    validationContext: ['groups' => ['validation:write:product']]
 )]
 #[ORM\Entity(repositoryClass: ProductsRepository::class)]
 class Products
@@ -38,6 +40,9 @@ class Products
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['read:product', 'write:product'])]
+    #[Assert\NotNull(groups: ['validation:read:product', 'validation:write:product'])]
+    #[Assert\NotBlank(groups: ['validation:read:product', 'validation:write:product'])]
+    #[Assert\Length(min: 2, max: 10, groups: ['validation:write:product'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -53,7 +58,6 @@ class Products
     private ?User $user = null;
 
     #[ORM\OneToMany(mappedBy: 'product', targetEntity: Orders::class, cascade: ['persist'])]
-    #[Groups(['read:product', 'write:product'])]
     private Collection $orders;
 
     public function __construct()
