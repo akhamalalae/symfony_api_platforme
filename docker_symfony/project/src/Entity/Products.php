@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Metadata\ApiProperty;
 
 #[ApiResource(
     normalizationContext: ['groups' => ['read:product']],
@@ -21,14 +22,18 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 #[Delete]
 #[Get(
-    validationContext: ['groups' => ['validation:read:product']]
+    security: "is_granted('ROLE_USER') and object.user == user",
+    securityMessage: 'Sorry, but you are not the product owner.'
 )]
-#[Put]
+#[Put(
+    securityPostDenormalize: "is_granted('ROLE_USER') or (object.user == user and previous_object.user == user)",
+    securityPostDenormalizeMessage: 'Sorry, but you are not the actual product owner.'
+)]
 #[GetCollection(
-    validationContext: ['groups' => ['validation:read:product']]
 )]
 #[Post(
-    validationContext: ['groups' => ['validation:write:product']]
+    validationContext: ['groups' => ['validation:write:product']],
+    security: "is_granted('ROLE_USER')",
 )]
 #[ORM\Entity(repositoryClass: ProductsRepository::class)]
 class Products
@@ -40,13 +45,19 @@ class Products
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['read:product', 'write:product'])]
-    #[Assert\NotNull(groups: ['validation:read:product', 'validation:write:product'])]
-    #[Assert\NotBlank(groups: ['validation:read:product', 'validation:write:product'])]
-    #[Assert\Length(min: 2, max: 10, groups: ['validation:write:product'])]
+    #[Assert\NotNull(groups: ['validation:write:product'])]
+    #[Assert\NotBlank(groups: ['validation:write:product'])]
+    #[Assert\Length(min: 2, max: 50, groups: ['validation:write:product'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['read:product', 'write:product'])]
+    #[ApiProperty(
+        openapiContext: [
+            'type' => 'string',
+            'example' => 'product libelle'
+        ]
+    )]
     private ?string $libelle = null;
 
     #[ORM\ManyToMany(targetEntity: Categories::class, inversedBy: 'products')]
@@ -55,10 +66,18 @@ class Products
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[Groups(['read:product', 'write:product'])]
-    private ?User $user = null;
+    public ?User $user = null;
 
-    #[ORM\OneToMany(mappedBy: 'product', targetEntity: Orders::class, cascade: ['persist'])]
+    #[ORM\Column(nullable: true)]
+    #[Groups(['read:product', 'write:product'])]
+    private ?int $price = null;
+
+    #[ORM\ManyToMany(targetEntity: Orders::class, mappedBy: 'products')]
     private Collection $orders;
+
+    #[ORM\ManyToOne(inversedBy: 'products', cascade:['persist'])]
+    #[Groups(['read:product', 'write:product'])]
+    private ?ProductType $type = null;
 
     public function __construct()
     {
@@ -69,6 +88,18 @@ class Products
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    #[Groups(['read:product', 'write:product'])]
+    #[ApiProperty(
+        openapiContext: [
+            'type' => 'int',
+            'example' => 'TVA'
+        ]
+    )]
+    public function getPriceTVA(): ?int
+    {
+        return $this->price * 20 / 100;
     }
 
     public function getName(): ?string
@@ -131,6 +162,18 @@ class Products
         return $this;
     }
 
+    public function getPrice(): ?int
+    {
+        return $this->price;
+    }
+
+    public function setPrice(?int $price): self
+    {
+        $this->price = $price;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, Orders>
      */
@@ -143,7 +186,7 @@ class Products
     {
         if (!$this->orders->contains($order)) {
             $this->orders->add($order);
-            $order->setProduct($this);
+            $order->addProduct($this);
         }
 
         return $this;
@@ -152,11 +195,20 @@ class Products
     public function removeOrder(Orders $order): self
     {
         if ($this->orders->removeElement($order)) {
-            // set the owning side to null (unless already changed)
-            if ($order->getProduct() === $this) {
-                $order->setProduct(null);
-            }
+            $order->removeProduct($this);
         }
+
+        return $this;
+    }
+
+    public function getType(): ?ProductType
+    {
+        return $this->type;
+    }
+
+    public function setType(?ProductType $type): self
+    {
+        $this->type = $type;
 
         return $this;
     }

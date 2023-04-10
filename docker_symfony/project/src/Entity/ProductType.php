@@ -2,11 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\OrdersRepository;
+use ApiPlatform\Metadata\ApiResource;
+use App\Repository\ProductTypeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use ApiPlatform\Metadata\ApiResource;
 use Symfony\Component\Validator\Constraints as Assert;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
@@ -16,27 +16,22 @@ use ApiPlatform\Metadata\Post;
 use Symfony\Component\Serializer\Annotation\Groups;
 use ApiPlatform\Metadata\ApiProperty;
 
-#[ORM\Entity(repositoryClass: OrdersRepository::class)]
+
+#[ORM\Entity(repositoryClass: ProductTypeRepository::class)]
 #[ApiResource(
-    normalizationContext: ['groups' => ['read:order']],
-    denormalizationContext: ['groups' => ['write:order']],
+    normalizationContext: ['groups' => ['read:type']],
+    denormalizationContext: ['groups' => ['write:type']],
 )]
 #[Delete]
 #[Get(
-    security: "is_granted('ROLE_USER') and object.user == user",
-    securityMessage: 'Sorry, but you are not the order owner.'
 )]
 #[Put(
-    securityPostDenormalize: "is_granted('ROLE_USER') or (object.user == user and previous_object.user == user)",
-    securityPostDenormalizeMessage: 'Sorry, but you are not the actual order owner.'
 )]
 #[GetCollection(
 )]
 #[Post(
-    validationContext: ['groups' => ['validation:write:order']],
-    security: "is_granted('ROLE_USER')",
 )]
-class Orders
+class ProductType
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -44,19 +39,14 @@ class Orders
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['read:order', 'write:order'])]
+    #[Groups(['read:product', 'write:product', 'write:type', 'read:type'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['read:order', 'write:order'])]
+    #[Groups(['read:product', 'write:product', 'write:type', 'read:type'])]
     private ?string $libelle = null;
 
-    #[ORM\ManyToOne(inversedBy: 'orders')]
-    #[Groups(['read:order', 'write:order'])]
-    private ?User $user = null;
-
-    #[ORM\ManyToMany(targetEntity: Products::class, inversedBy: 'orders')]
-    #[Groups(['read:order', 'write:order'])]
+    #[ORM\OneToMany(mappedBy: 'type', targetEntity: Products::class)]
     private Collection $products;
 
     public function __construct()
@@ -93,18 +83,6 @@ class Orders
         return $this;
     }
 
-    public function getUser(): ?User
-    {
-        return $this->user;
-    }
-
-    public function setUser(?User $user): self
-    {
-        $this->user = $user;
-
-        return $this;
-    }
-
     /**
      * @return Collection<int, Products>
      */
@@ -117,6 +95,7 @@ class Orders
     {
         if (!$this->products->contains($product)) {
             $this->products->add($product);
+            $product->setType($this);
         }
 
         return $this;
@@ -124,9 +103,13 @@ class Orders
 
     public function removeProduct(Products $product): self
     {
-        $this->products->removeElement($product);
+        if ($this->products->removeElement($product)) {
+            // set the owning side to null (unless already changed)
+            if ($product->getType() === $this) {
+                $product->setType(null);
+            }
+        }
 
         return $this;
     }
-
 }
