@@ -23,18 +23,18 @@ use ApiPlatform\Metadata\ApiProperty;
 )]
 #[Delete]
 #[Get(
-    security: "is_granted('ROLE_USER') and object.user == user",
+    security: "is_granted('ROLE_ADMIN') and object.user == user",
     securityMessage: 'Sorry, but you are not the order owner.'
 )]
 #[Put(
-    securityPostDenormalize: "is_granted('ROLE_USER') or (object.user == user and previous_object.user == user)",
+    securityPostDenormalize: "is_granted('ROLE_ADMIN') or (object.user == user and previous_object.user == user)",
     securityPostDenormalizeMessage: 'Sorry, but you are not the actual order owner.'
 )]
 #[GetCollection(
 )]
 #[Post(
     validationContext: ['groups' => ['validation:write:order']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('ROLE_ADMIN')",
 )]
 class Orders
 {

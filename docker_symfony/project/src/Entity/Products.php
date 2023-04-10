@@ -26,14 +26,14 @@ use ApiPlatform\Metadata\ApiProperty;
     securityMessage: 'Sorry, but you are not the product owner.'
 )]
 #[Put(
-    securityPostDenormalize: "is_granted('ROLE_USER') or (object.user == user and previous_object.user == user)",
+    securityPostDenormalize: "is_granted('ROLE_ADMIN') or (object.user == user and previous_object.user == user)",
     securityPostDenormalizeMessage: 'Sorry, but you are not the actual product owner.'
 )]
 #[GetCollection(
 )]
 #[Post(
     validationContext: ['groups' => ['validation:write:product']],
-    security: "is_granted('ROLE_USER')",
+    security: "is_granted('ROLE_ADMIN')",
 )]
 #[ORM\Entity(repositoryClass: ProductsRepository::class)]
 class Products
