@@ -15,12 +15,22 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use Symfony\Component\Serializer\Annotation\Groups;
 use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\GraphQl\Mutation;
+use ApiPlatform\Metadata\GraphQl\Query;
+use ApiPlatform\Metadata\GraphQl\QueryCollection;
 
 
 #[ORM\Entity(repositoryClass: ProductTypeRepository::class)]
 #[ApiResource(
     normalizationContext: ['groups' => ['read:type']],
     denormalizationContext: ['groups' => ['write:type']],
+    graphQlOperations: [
+        new Query(),
+        new QueryCollection(),
+        new Mutation(name: 'create'),
+        new Mutation(name: 'update'),
+        new Mutation(name: 'delete'),
+    ]
 )]
 #[Delete]
 #[Get(

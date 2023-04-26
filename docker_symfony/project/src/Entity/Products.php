@@ -16,17 +16,28 @@ use ApiPlatform\Metadata\Post;
 use Symfony\Component\Serializer\Annotation\Groups;
 use ApiPlatform\Metadata\ApiProperty;
 
+use ApiPlatform\Metadata\GraphQl\DeleteMutation;
+use ApiPlatform\Metadata\GraphQl\Mutation;
+use ApiPlatform\Metadata\GraphQl\Query;
+use ApiPlatform\Metadata\GraphQl\QueryCollection;
+
+use App\Controller\CreateMediaObjectAction;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
+use Symfony\Component\HttpFoundation\File\File;
+
 #[ApiResource(
     normalizationContext: ['groups' => ['read:product']],
     denormalizationContext: ['groups' => ['write:product']],
 )]
+
 #[Delete]
 #[Get(
     security: "is_granted('ROLE_USER') and object.user == user",
     securityMessage: 'Sorry, but you are not the product owner.'
 )]
 #[Put(
-    securityPostDenormalize: "is_granted('ROLE_ADMIN') or (object.user == user and previous_object.user == user)",
+    //securityPostDenormalize: "is_granted('ROLE_ADMIN') or (object.user == user and previous_object.user == user)",
+    securityPostDenormalize: "is_granted('ROLE_ADMIN') and (object.user == user)",
     securityPostDenormalizeMessage: 'Sorry, but you are not the actual product owner.'
 )]
 #[GetCollection(
@@ -34,6 +45,28 @@ use ApiPlatform\Metadata\ApiProperty;
 #[Post(
     validationContext: ['groups' => ['validation:write:product']],
     security: "is_granted('ROLE_ADMIN')",
+    securityMessage: 'Only admins can add products.'
+)]
+#[Post(
+    controller: CreateMediaObjectAction::class,
+    deserialize: false,
+    openapiContext: [
+        'requestBody' => [
+            'content' => [
+                'multipart/form-data' => [
+                    'schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'file' => [
+                                'type' => 'string',
+                                'format' => 'binary'
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
 )]
 #[ORM\Entity(repositoryClass: ProductsRepository::class)]
 class Products
@@ -79,6 +112,16 @@ class Products
     #[Groups(['read:product', 'write:product'])]
     private ?ProductType $type = null;
 
+    #[ApiProperty(types: ['https://schema.org/contentUrl'])]
+    #[Groups(['read:product', 'write:product'])]
+    public ?string $contentUrl = null;
+
+    #[Vich\UploadableField(mapping: "media_object", fileNameProperty: "filePath")]
+    public ?File $file = null;
+
+    #[ORM\Column(nullable: true)]
+    public ?string $filePath = null;
+
     public function __construct()
     {
         $this->productCategories = new ArrayCollection();
@@ -97,7 +140,7 @@ class Products
             'example' => 'TVA'
         ]
     )]
-    public function getPriceTVA(): ?int
+    public function getPriceTva(): ?int
     {
         return $this->price * 20 / 100;
     }
@@ -209,6 +252,66 @@ class Products
     public function setType(?ProductType $type): self
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of filePath
+     */ 
+    public function getFilePath()
+    {
+        return $this->filePath;
+    }
+
+    /**
+     * Set the value of filePath
+     *
+     * @return  self
+     */ 
+    public function setFilePath($filePath)
+    {
+        $this->filePath = $filePath;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of file
+     */ 
+    public function getFile()
+    {
+        return $this->file;
+    }
+
+    /**
+     * Set the value of file
+     *
+     * @return  self
+     */ 
+    public function setFile($file)
+    {
+        $this->file = $file;
+
+        return $this;
+    }
+
+    /**
+     * Get the value of contentUrl
+     */ 
+    public function getContentUrl()
+    {
+        return $this->contentUrl;
+    }
+
+    /**
+     * Set the value of contentUrl
+     *
+     * @return  self
+     */ 
+    public function setContentUrl($contentUrl)
+    {
+        $this->contentUrl = $contentUrl;
 
         return $this;
     }
