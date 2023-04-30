@@ -81,6 +81,7 @@ class Products
     #[Assert\NotNull(groups: ['validation:write:product'])]
     #[Assert\NotBlank(groups: ['validation:write:product'])]
     #[Assert\Length(min: 2, max: 50, groups: ['validation:write:product'])]
+    #[Assert\Length(min: 2, max: 50, groups: ['validation:write:product'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, nullable: true)]
